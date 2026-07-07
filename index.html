@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes" />
-  <title>ELX OSR Control Tower - Label OCR Fixed V4</title>
+  <title>ELX OSR Control Tower - Movement Test V8</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,14 +64,30 @@
     .confidence-badge.amber { background: #fff3cd; color: #856404; }
     .confidence-badge.red { background: #f8d7da; color: #721c24; }
     .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
-    .board-item { background: white; padding: 12px 18px; border-radius: 16px; border-left: 6px solid #d32f2f; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin: 8px 0; display: grid; grid-template-columns: 1.1fr 1.4fr 1fr auto; gap:12px; align-items:center; }
+    .board-item { background: white; padding: 12px 14px; border-radius: 16px; border-left: 6px solid #d32f2f; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin: 8px 0; display: grid; grid-template-columns: 1.05fr 1.3fr 1.05fr .85fr 1.3fr; gap:10px; align-items:center; }
+    .action-row { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    .btn-mini { border:1px solid #d9d3c8; background:#fff; color:#161616; border-radius:999px; padding:7px 10px; font-size:.76rem; font-weight:800; cursor:pointer; }
+    .btn-mini.primary { background:#d32f2f; color:#fff; border-color:#d32f2f; }
+    .btn-mini.amber { background:#fff3cd; color:#6b5100; border-color:#ecd37a; }
+    .btn-mini.green { background:#d4edda; color:#155724; border-color:#afdbba; }
+    .location-summary { display:grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap:10px; margin: 10px 0 14px; }
+    .location-card { background:#fff; border:1px solid #e4dfd4; border-radius:16px; padding:11px 13px; min-height:70px; }
+    .location-card b { display:block; font-size:.82rem; line-height:1.15; color:#222; }
+    .location-card .count { font-size:1.55rem; font-weight:900; color:#d32f2f; margin-top:4px; }
+    .move-grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:14px; }
+    .move-grid label { font-weight:700; font-size:.82rem; display:flex; flex-direction:column; gap:6px; }
+    .move-grid select, .move-grid input { padding:11px 12px; border-radius:18px; border:1px solid #ccc7bc; font-size:.95rem; }
+    .detail-box { background:#f8f7f3; border:1px solid #e2dfd6; border-radius:16px; padding:13px 15px; margin-top:10px; }
+    .timeline-list { margin-top:10px; display:grid; gap:8px; }
+    .timeline-item { background:#fff; border:1px solid #e8e3d8; border-radius:14px; padding:10px 12px; display:grid; grid-template-columns: 120px 1fr 160px; gap:10px; font-size:.86rem; }
     .small { color:#666; font-size:0.82rem; }
     .pill { background:#eee; padding:3px 12px; border-radius:40px; font-size:0.78rem; font-weight:700; display:inline-flex; justify-content:center; }
     .pill.green { background:#d4edda; color:#155724; }
     .pill.amber { background:#fff3cd; color:#856404; }
     .toast { background: #1e1e1e; color: white; padding: 14px 24px; border-radius: 60px; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 2000; visibility: hidden; opacity: 0; transition: 0.2s; }
     .toast.show { visibility: visible; opacity: 1; }
-    @media (max-width: 820px) { .main-grid { grid-template-columns: 1fr; } .sidebar { display: none; } .field-grid, .capture-grid { grid-template-columns: 1fr; } .modal { padding: 20px; border-radius: 20px; } .board-item { grid-template-columns: 1fr; } }
+    @media (max-width: 1100px) { .location-summary { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
+    @media (max-width: 820px) { .main-grid { grid-template-columns: 1fr; } .sidebar { display: none; } .field-grid, .capture-grid, .move-grid { grid-template-columns: 1fr; } .modal { padding: 20px; border-radius: 20px; } .board-item { grid-template-columns: 1fr; } .action-row { justify-content:flex-start; } .timeline-item { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -120,8 +136,11 @@
         <span class="step">6. Invoice Ready</span>
       </div>
 
+      <div style="font-weight:800; color:#333; margin: 6px 0 8px;">Warehouse Locations / Cages</div>
+      <div class="location-summary" id="locationSummary"></div>
+
       <div class="board" id="workflowBoard">
-        <div style="font-weight:700; color:#333; margin-bottom:12px;">OSR Workflow Board</div>
+        <div style="font-weight:700; color:#333; margin-bottom:12px;">OSR Workflow Board - move items through cages, staging and dispatch</div>
         <div id="boardItems"></div>
       </div>
     </div>
@@ -139,11 +158,11 @@
     </div>
 
     <div id="step1Container">
-      <div class="hint-box"><b>Best result:</b> fill the camera with only the paper label, keep it flat, use good light, and avoid desk/background. This version auto-crops the text area before OCR.</div>
+      <div class="hint-box"><b>Best result:</b> fill the camera with only the paper label, keep it flat, use good light, and avoid desk/background. This mobile version compresses the photo first, then auto-crops the text area before OCR. Works better on iPhone/iPad.</div>
       <div class="upload-area">
         <input type="file" id="imageInput" accept="image/*" capture="environment" style="display:none;" />
         <button class="btn btn-outline" id="uploadBtn">Take / Upload Label Photo</button>
-        <p style="margin-top:10px; font-size:0.8rem; color:#6b6b6b;">Desktop: upload photo | Mobile/tablet: camera capture</p>
+        <p style="margin-top:10px; font-size:0.8rem; color:#6b6b6b;">Desktop: upload photo | iPhone/iPad: camera or Photo Library. Use good light and fill the frame.</p>
       </div>
       <div class="capture-grid" id="previewGrid" style="display:none;">
         <div class="preview-card">
@@ -196,6 +215,47 @@
   </div>
 </div>
 
+
+<div class="modal-overlay" id="moveModal">
+  <div class="modal" style="max-width:720px;">
+    <span class="modal-close" id="closeMoveModalBtn">&times;</span>
+    <h2>Move OSR Item</h2>
+    <div class="detail-box" id="moveItemSummary">-</div>
+    <div class="move-grid">
+      <label>Move to cage / box / location
+        <select id="moveLocationSelect">
+          <option>BHP Olympic Dam Cage</option>
+          <option>BHP Carrapateena Cage</option>
+          <option>BHP Prominent Hill Cage</option>
+          <option>Day 1 FIFO Staging</option>
+          <option>Day 2 FIFO Staging</option>
+          <option>Quarantine / Exceptions</option>
+          <option>Ready Dispatch Zone</option>
+          <option>Loaded / Outbound Bay</option>
+        </select>
+      </label>
+      <label>Workflow status
+        <select id="moveStatusSelect">
+          <option>New Receipts</option>
+          <option>Needs Validation</option>
+          <option>Staged</option>
+          <option>Dispatch Ready</option>
+          <option>Dispatched</option>
+          <option>Exception</option>
+        </select>
+      </label>
+      <label style="grid-column: 1 / -1;">Movement note
+        <input id="moveNoteInput" placeholder="e.g. physically moved to Olympic Dam cage" />
+      </label>
+    </div>
+    <div class="hint-box"><b>Demo logic:</b> this simulates scanning the ELX OSR ID and moving the physical parcel to a cage, staging area, exception area or dispatch bay.</div>
+    <div class="row">
+      <button class="btn btn-primary" id="saveMoveBtn">Save Movement</button>
+      <button class="btn btn-outline" id="cancelMoveBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toastMessage">OSR Record created</div>
 
 <script>
@@ -204,13 +264,19 @@
     rawText: '',
     processedImageData: null,
     originalImageData: null,
-    osrRecords: [
-      { id: 'OSR-2026-000721', status: 'New Receipts', po: '4500871001', supplier: 'Blackwoods', dest: 'BHP Olympic Dam', cage: 'BHP Olympic Dam Cage' },
-      { id: 'OSR-2026-000722', status: 'New Receipts', po: '4500871002', supplier: 'Coates Hire', dest: 'BHP Carrapateena', cage: 'BHP Carrapateena Cage' },
-      { id: 'OSR-2026-000723', status: 'Needs Validation', po: '4500871003', supplier: 'ATOM Supply', dest: 'Prominent Hill', cage: 'BHP Prominent Hill Cage' },
-      { id: 'OSR-2026-000724', status: 'Needs Validation', po: '4500871004', supplier: 'Unknown', dest: 'Unknown', cage: 'Unknown / Review Cage' },
-      { id: 'OSR-2026-000725', status: 'Staged', po: '4500871005', supplier: 'Blackwoods', dest: 'BHP Olympic Dam', cage: 'Ready Dispatch Zone' }
-    ]
+    locations: [
+      'BHP Olympic Dam Cage',
+      'BHP Carrapateena Cage',
+      'BHP Prominent Hill Cage',
+      'Day 1 FIFO Staging',
+      'Day 2 FIFO Staging',
+      'Quarantine / Exceptions',
+      'Ready Dispatch Zone',
+      'Loaded / Outbound Bay'
+    ],
+    selectedMoveId: null,
+    osrRecords: loadSavedRecords(),
+    timeline: loadSavedTimeline()
   };
 
   const $ = (id) => document.getElementById(id);
@@ -246,17 +312,121 @@
   const retryBtn = $('retryOcrBtn');
   const boardItems = $('boardItems');
   const toast = $('toastMessage');
+  const locationSummary = $('locationSummary');
+  const moveModal = $('moveModal');
+  const closeMoveModalBtn = $('closeMoveModalBtn');
+  const cancelMoveBtn = $('cancelMoveBtn');
+  const saveMoveBtn = $('saveMoveBtn');
+  const moveItemSummary = $('moveItemSummary');
+  const moveLocationSelect = $('moveLocationSelect');
+  const moveStatusSelect = $('moveStatusSelect');
+  const moveNoteInput = $('moveNoteInput');
+
+  function getDeviceProfile() {
+    const ua = navigator.userAgent || '';
+    const touchPoints = navigator.maxTouchPoints || 0;
+    const isiPadOS = /Macintosh/i.test(ua) && touchPoints > 1;
+    const isiOS = /iPad|iPhone|iPod/i.test(ua) || isiPadOS;
+    const isAndroid = /Android/i.test(ua);
+    const isPhone = /iPhone|iPod/i.test(ua) || (isAndroid && /Mobile/i.test(ua));
+    const isTablet = isiPadOS || /iPad/i.test(ua) || (isAndroid && !/Mobile/i.test(ua));
+
+    // Keep OCR image small on Apple mobile devices so Safari does not kill the worker.
+    // Desktop can handle larger images, which often improves OCR accuracy.
+    const maxImageLongSide = isiOS ? (isPhone ? 950 : 1150) : (isAndroid ? 1100 : 1800);
+    const previewLongSide = isiOS ? 900 : 1200;
+    const jpegQuality = isiOS ? 0.78 : 0.88;
+    const allowAutoRetry = !isiOS && !isPhone;
+    return { isiOS, isAndroid, isPhone, isTablet, maxImageLongSide, previewLongSide, jpegQuality, allowAutoRetry };
+  }
+
+  const DEVICE = getDeviceProfile();
+
+  function waitForUi() {
+    return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+  }
+
+  function defaultRecords() {
+    return [
+      { id: 'OSR-2026-000721', status: 'New Receipts', po: '4500871001', supplier: 'Blackwoods', dest: 'BHP Olympic Dam', cage: 'BHP Olympic Dam Cage', qty: '2' },
+      { id: 'OSR-2026-000722', status: 'New Receipts', po: '4500871002', supplier: 'Coates Hire', dest: 'BHP Carrapateena', cage: 'BHP Carrapateena Cage', qty: '1' },
+      { id: 'OSR-2026-000723', status: 'Needs Validation', po: '4500871003', supplier: 'ATOM Supply', dest: 'Prominent Hill', cage: 'BHP Prominent Hill Cage', qty: '3' },
+      { id: 'OSR-2026-000724', status: 'Needs Validation', po: '4500871004', supplier: 'Unknown', dest: 'Unknown', cage: 'Quarantine / Exceptions', qty: '0' },
+      { id: 'OSR-2026-000725', status: 'Staged', po: '4500871005', supplier: 'Blackwoods', dest: 'BHP Olympic Dam', cage: 'Day 1 FIFO Staging', qty: '4' }
+    ];
+  }
+
+  function loadSavedRecords() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('elx_osr_records_v10') || 'null');
+      return Array.isArray(saved) && saved.length ? saved : defaultRecords();
+    } catch { return defaultRecords(); }
+  }
+
+  function loadSavedTimeline() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('elx_osr_timeline_v10') || 'null');
+      return Array.isArray(saved) ? saved : [];
+    } catch { return []; }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem('elx_osr_records_v10', JSON.stringify(state.osrRecords));
+      localStorage.setItem('elx_osr_timeline_v10', JSON.stringify(state.timeline.slice(0, 100)));
+    } catch {}
+  }
+
+  function addTimeline(id, event, location, status, note) {
+    state.timeline.unshift({
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      id,
+      event,
+      location: location || '',
+      status: status || '',
+      note: note || ''
+    });
+    saveState();
+  }
+
+  function statusClass(status) {
+    if (status === 'Staged' || status === 'Dispatch Ready' || status === 'Dispatched') return 'green';
+    if (status === 'Needs Validation' || status === 'Exception') return 'amber';
+    return '';
+  }
+
+  function actionButtons(record) {
+    const id = escapeHtml(record.id);
+    return `
+      <div class="action-row">
+        <button class="btn-mini" data-action="move" data-id="${id}">Move</button>
+        <button class="btn-mini amber" data-action="validate" data-id="${id}">SAP OK</button>
+        <button class="btn-mini green" data-action="ready" data-id="${id}">Ready</button>
+        <button class="btn-mini" data-action="exception" data-id="${id}">Exception</button>
+      </div>`;
+  }
+
+  function renderLocationSummary() {
+    const rows = state.locations.map(loc => {
+      const count = state.osrRecords.filter(r => r.cage === loc).length;
+      return `<div class="location-card"><b>${escapeHtml(loc)}</b><div class="count">${count}</div></div>`;
+    }).join('');
+    locationSummary.innerHTML = rows;
+  }
 
   function renderBoard() {
     boardItems.innerHTML = state.osrRecords.map(r => `
       <div class="board-item">
-        <div><b>${escapeHtml(r.id)}</b><div class="small">PO ${escapeHtml(r.po || 'N/A')}</div></div>
+        <div><b>${escapeHtml(r.id)}</b><div class="small">PO ${escapeHtml(r.po || 'N/A')} · Qty ${escapeHtml(r.qty || '0')}</div></div>
         <div><b>${escapeHtml(r.supplier || 'N/A')}</b><div class="small">${escapeHtml(r.dest || 'N/A')}</div></div>
         <div><span class="pill">${escapeHtml(r.cage || 'Unassigned')}</span></div>
-        <div><span class="pill ${r.status === 'Staged' ? 'green' : r.status === 'Needs Validation' ? 'amber' : ''}">${escapeHtml(r.status)}</span></div>
+        <div><span class="pill ${statusClass(r.status)}">${escapeHtml(r.status)}</span></div>
+        ${actionButtons(r)}
       </div>
     `).join('');
+    renderLocationSummary();
     updateKpi();
+    saveState();
   }
 
   function updateKpi() {
@@ -319,23 +489,25 @@
 
   function loadImageFromFile(file) {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = reject;
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onerror = reject;
-        img.onload = () => resolve({ img, dataUrl: e.target.result });
-        img.src = e.target.result;
+      // Object URL uses much less memory than keeping a huge base64 iPhone photo in state.
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.decoding = 'async';
+      img.onerror = (err) => {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
       };
-      reader.readAsDataURL(file);
+      img.onload = () => resolve({ img, objectUrl });
+      img.src = objectUrl;
     });
   }
 
-  function canvasToDataUrl(canvas, quality = 0.92) {
+  function canvasToDataUrl(canvas, quality = 0.86) {
+    // JPEG keeps the payload smaller for mobile OCR. Tesseract does not need full iPhone resolution.
     return canvas.toDataURL('image/jpeg', quality);
   }
 
-  function resizeToCanvas(img, maxLongSide = 2300) {
+  function resizeToCanvas(img, maxLongSide = 1200) {
     let w = img.naturalWidth || img.width;
     let h = img.naturalHeight || img.height;
     const longest = Math.max(w, h);
@@ -361,13 +533,16 @@
     const data = imgData.data;
     const xs = [], ys = [];
 
-    for (let y = 0; y < h; y += 2) {
-      for (let x = 0; x < w; x += 2) {
+    // Slightly wider sampling on mobile keeps CPU down while still finding text-heavy regions.
+    const step = DEVICE.isiOS ? 3 : 2;
+    const darkThreshold = DEVICE.isiOS ? 155 : 145;
+    for (let y = 0; y < h; y += step) {
+      for (let x = 0; x < w; x += step) {
         const i = (y * w + x) * 4;
         const r = data[i], g = data[i + 1], b = data[i + 2];
         const gray = 0.299 * r + 0.587 * g + 0.114 * b;
         const nearEdge = x < 12 || y < 12 || x > w - 12 || y > h - 12;
-        if (!nearEdge && gray < 145) {
+        if (!nearEdge && gray < darkThreshold) {
           xs.push(x);
           ys.push(y);
         }
@@ -387,8 +562,8 @@
 
     const bw = x2 - x1;
     const bh = y2 - y1;
-    const marginX = Math.max(70, Math.round(bw * 0.16));
-    const marginY = Math.max(80, Math.round(bh * 0.12));
+    const marginX = Math.max(50, Math.round(bw * 0.16));
+    const marginY = Math.max(60, Math.round(bh * 0.12));
 
     x1 = Math.max(0, x1 - marginX);
     y1 = Math.max(0, y1 - marginY);
@@ -399,7 +574,6 @@
     const cropH = y2 - y1;
     const areaRatio = (cropW * cropH) / (w * h);
 
-    // If crop is unreasonable, fall back to original.
     if (cropW < w * 0.25 || cropH < h * 0.20 || areaRatio > 0.95) return canvas;
 
     const out = document.createElement('canvas');
@@ -431,7 +605,7 @@
     for (let i = 0; i < data.length; i += 4) {
       let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
       gray = ((gray - p02) / range) * 255;
-      gray = (gray - 128) * 1.35 + 128; // contrast
+      gray = (gray - 128) * (DEVICE.isiOS ? 1.22 : 1.35) + 128;
       gray = Math.max(0, Math.min(255, gray));
       data[i] = data[i + 1] = data[i + 2] = gray;
     }
@@ -440,11 +614,25 @@
   }
 
   async function preprocessImage(file) {
-    const { img, dataUrl } = await loadImageFromFile(file);
-    const base = resizeToCanvas(img, 2300);
-    const cropped = autoCropToDarkText(base);
-    const enhanced = enhanceForOcr(cropped);
-    return { original: dataUrl, processed: canvasToDataUrl(enhanced, 0.94) };
+    if (!file || !/^image\//i.test(file.type || 'image/jpeg')) {
+      throw new Error('Please choose a photo/image file.');
+    }
+
+    const { img, objectUrl } = await loadImageFromFile(file);
+    try {
+      const previewCanvas = resizeToCanvas(img, DEVICE.previewLongSide);
+      const base = resizeToCanvas(img, DEVICE.maxImageLongSide);
+      await waitForUi();
+      const cropped = autoCropToDarkText(base);
+      await waitForUi();
+      const enhanced = enhanceForOcr(cropped);
+      return {
+        original: canvasToDataUrl(previewCanvas, DEVICE.jpegQuality),
+        processed: canvasToDataUrl(enhanced, DEVICE.jpegQuality)
+      };
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   }
 
   function normalizeText(text) {
@@ -676,8 +864,19 @@
   }
 
   async function runOcr(imageDataUrl) {
-    setProgress('Starting OCR engine...', 8);
+    if (!window.Tesseract) {
+      throw new Error('Tesseract.js did not load. Check internet/CDN access on this device.');
+    }
+
+    const modeText = DEVICE.isiOS ? 'mobile OCR mode' : 'desktop OCR mode';
+    setProgress(`Starting ${modeText}...`, 8);
+    await waitForUi();
+
     const worker = await Tesseract.createWorker('eng', 1, {
+      // Explicit paths are more reliable on GitHub Pages + iOS Safari than relying on defaults.
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+      corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
+      langPath: 'https://tessdata.projectnaptha.com/4.0.0',
       logger: (m) => {
         if (m.status) {
           const pct = Math.round((m.progress || 0) * 100);
@@ -686,31 +885,35 @@
       }
     });
 
-    // PSM 6 is good for a clean cropped label block.
-    await worker.setParameters({
-      tessedit_pageseg_mode: '6',
-      preserve_interword_spaces: '1',
-      user_defined_dpi: '300'
-    });
-    const first = await worker.recognize(imageDataUrl);
-    let text = first.data.text || '';
-    let fields = extractFields(text);
-
-    // If weak, retry with sparse text mode and combine both outputs.
-    if (scoreConfidence(fields) === 'low') {
-      setProgress('Retrying OCR with sparse text mode...', 70);
+    try {
       await worker.setParameters({
-        tessedit_pageseg_mode: '11',
+        tessedit_pageseg_mode: '6',
         preserve_interword_spaces: '1',
-        user_defined_dpi: '300'
+        user_defined_dpi: DEVICE.isiOS ? '220' : '300'
       });
-      const second = await worker.recognize(imageDataUrl);
-      text = text + '\n' + (second.data.text || '');
-    }
 
-    await worker.terminate();
-    setProgress('OCR complete', 100);
-    return text;
+      const first = await worker.recognize(imageDataUrl);
+      let text = first.data.text || '';
+      let fields = extractFields(text);
+
+      // On PC we can retry automatically. On iPhone/iPad, avoid heavy second pass unless user asks later.
+      if (scoreConfidence(fields) === 'low' && DEVICE.allowAutoRetry) {
+        setProgress('Retrying OCR with sparse text mode...', 70);
+        await waitForUi();
+        await worker.setParameters({
+          tessedit_pageseg_mode: '11',
+          preserve_interword_spaces: '1',
+          user_defined_dpi: '300'
+        });
+        const second = await worker.recognize(imageDataUrl);
+        text = text + '\n' + (second.data.text || '');
+      }
+
+      setProgress('OCR complete', 100);
+      return text;
+    } finally {
+      await worker.terminate();
+    }
   }
 
   scanBtn.addEventListener('click', openModal);
@@ -723,7 +926,7 @@
     const file = e.target.files[0];
     if (!file) return;
     try {
-      setProgress('Pre-processing image and auto-cropping label...', 5);
+      setProgress(`Preparing photo for ${DEVICE.isiOS ? 'iPhone/iPad' : 'desktop'} OCR...`, 5);
       const processed = await preprocessImage(file);
       state.originalImageData = processed.original;
       state.processedImageData = processed.processed;
@@ -744,6 +947,7 @@
     if (!state.processedImageData) return;
     extractBtn.disabled = true;
     try {
+      await waitForUi();
       const text = await runOcr(state.processedImageData);
       state.rawText = normalizeText(text);
       rawOcrText.textContent = state.rawText || '(No text detected)';
@@ -792,9 +996,66 @@
     const seq = String(state.osrRecords.length + 1).padStart(6, '0');
     const id = `OSR-${year}-${seq}`;
     state.osrRecords.unshift({ id, status: 'Needs Validation', po, supplier, dest, connote, ref, qty, cage });
+    addTimeline(id, 'OSR record created from label photo', cage, 'Needs Validation', `PO ${po} · ${supplier}`);
     renderBoard();
     showToast(`${id} created and moved to Needs Validation`);
     closeModal();
+  });
+
+
+  function findRecord(id) {
+    return state.osrRecords.find(r => r.id === id);
+  }
+
+  function openMoveModal(id) {
+    const r = findRecord(id);
+    if (!r) return;
+    state.selectedMoveId = id;
+    moveItemSummary.innerHTML = `<b>${escapeHtml(r.id)}</b><br>PO ${escapeHtml(r.po || 'N/A')} · ${escapeHtml(r.supplier || 'N/A')}<br><span class="small">Current: ${escapeHtml(r.cage || 'Unassigned')} · ${escapeHtml(r.status || 'New Receipts')}</span>`;
+    moveLocationSelect.value = r.cage || 'BHP Olympic Dam Cage';
+    moveStatusSelect.value = r.status || 'New Receipts';
+    moveNoteInput.value = '';
+    moveModal.classList.add('open');
+  }
+
+  function closeMoveModal() {
+    moveModal.classList.remove('open');
+    state.selectedMoveId = null;
+  }
+
+  function moveRecord(id, newCage, newStatus, note) {
+    const r = findRecord(id);
+    if (!r) return;
+    const oldCage = r.cage || 'Unassigned';
+    const oldStatus = r.status || 'New Receipts';
+    r.cage = newCage || r.cage;
+    r.status = newStatus || r.status;
+    addTimeline(id, `Moved from ${oldCage} / ${oldStatus}`, r.cage, r.status, note || 'Movement updated by user');
+    renderBoard();
+    showToast(`${id} moved to ${r.cage}`);
+  }
+
+  boardItems.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-id');
+    const action = btn.getAttribute('data-action');
+    const r = findRecord(id);
+    if (!r) return;
+
+    if (action === 'move') openMoveModal(id);
+    if (action === 'validate') moveRecord(id, r.cage || 'BHP Olympic Dam Cage', 'Staged', 'SAP match confirmed by worker');
+    if (action === 'ready') moveRecord(id, 'Ready Dispatch Zone', 'Dispatch Ready', 'Moved to ready dispatch zone');
+    if (action === 'exception') moveRecord(id, 'Quarantine / Exceptions', 'Exception', 'Moved to exception review');
+  });
+
+  closeMoveModalBtn.addEventListener('click', closeMoveModal);
+  cancelMoveBtn.addEventListener('click', closeMoveModal);
+  moveModal.addEventListener('click', (e) => { if (e.target === moveModal) closeMoveModal(); });
+  saveMoveBtn.addEventListener('click', () => {
+    if (!state.selectedMoveId) return;
+    moveRecord(state.selectedMoveId, moveLocationSelect.value, moveStatusSelect.value, moveNoteInput.value.trim());
+    closeMoveModal();
   });
 
   exportBtn.addEventListener('click', () => {
