@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes" />
+  <title>ELX OSR Control Tower - Movement Test V8</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Roboto, system-ui, sans-serif; background: #f4f4f0; color: #1e1e1e; padding: 16px; }
+    .app { max-width: 1400px; margin: 0 auto; background: white; border-radius: 24px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; min-height: 90vh; }
+    .nav-header { background: #111; color: white; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; border-bottom: 4px solid #d32f2f; }
+    .logo { font-weight: 800; font-size: 1.45rem; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
+    .logo span { color: #f04242; }
+    .nav-links { display: flex; gap: 24px; font-weight: 500; color: #ccc; flex-wrap: wrap; }
+    .nav-links a { color: #eee; text-decoration: none; padding: 4px 0; border-bottom: 2px solid transparent; }
+    .nav-links a.active { border-bottom-color: #d32f2f; color: white; }
+    .main-grid { display: grid; grid-template-columns: 240px 1fr; gap: 0; flex: 1; }
+    .sidebar { background: #f9f9f6; padding: 24px 16px; border-right: 1px solid #e0ddd5; }
+    .sidebar ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .sidebar li { padding: 10px 14px; border-radius: 12px; font-weight: 500; color: #2b2b2b; background: transparent; transition: 0.1s; cursor: pointer; }
+    .sidebar li.active { background: #d32f2f; color: white; }
+    .content { padding: 24px 28px; background: #ffffff; }
+    .top-row { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom: 18px; }
+    .top-row h1 { font-size: 1.6rem; letter-spacing: -0.04em; }
+    .sub { color:#646464; margin-top:4px; }
+    .kpi-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
+    .kpi-card { background: #f3f2ee; padding: 14px 18px; border-radius: 18px; flex: 1 1 140px; box-shadow: 0 2px 6px rgba(0,0,0,0.02); border: 1px solid #e6e3da; }
+    .kpi-card h4 { font-size: 0.78rem; text-transform: uppercase; color: #5a5a5a; letter-spacing: 0.5px; }
+    .kpi-card .value { font-size: 2.0rem; font-weight: 700; margin-top: 4px; }
+    .workflow-steps { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 18px; }
+    .step { background: #ecebe6; padding: 9px 16px; border-radius: 40px; font-size: 0.88rem; font-weight: 600; color: #3a3a3a; border: 1px solid #d6d3ca; }
+    .step.active { background: #d32f2f; color: white; border-color: #b71c1c; }
+    .board { background: #f8f7f3; border-radius: 20px; padding: 18px; border: 1px solid #e2dfd6; min-height: 260px; margin-top: 14px; }
+    .btn { background: #1e1e1e; color: white; border: none; padding: 10px 18px; border-radius: 40px; font-weight: 700; font-size: 0.92rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.15s; border: 1px solid transparent; }
+    .btn-primary { background: #d32f2f; }
+    .btn-primary:hover { background: #b71c1c; }
+    .btn-outline { background: transparent; color: #1e1e1e; border: 1px solid #b0aca2; }
+    .btn-outline:hover { background: #e6e3da; }
+    .btn-soft { background:#f3f2ee; color:#111; border:1px solid #ddd8ce; }
+    .btn:disabled { opacity: 0.5; pointer-events: none; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 1000; visibility: hidden; opacity: 0; transition: 0.2s; }
+    .modal-overlay.open { visibility: visible; opacity: 1; }
+    .modal { max-width: 980px; width: 100%; max-height: 95vh; background: white; border-radius: 30px; padding: 24px 28px; overflow-y: auto; box-shadow: 0 30px 60px rgba(0,0,0,0.3); position: relative; }
+    .modal h2 { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+    .modal-close { position: absolute; top: 18px; right: 24px; font-size: 2rem; cursor: pointer; color: #6b6b6b; line-height: 1; }
+    .step-indicator { display: flex; gap: 12px; margin: 16px 0 18px; font-weight: 600; color: #4a4a4a; flex-wrap: wrap; }
+    .step-indicator .step-badge { background: #eae8e1; padding: 6px 15px; border-radius: 40px; }
+    .step-indicator .step-badge.active { background: #d32f2f; color: white; }
+    .upload-area { border: 2px dashed #bdb9ae; border-radius: 22px; padding: 26px 20px; text-align: center; margin: 12px 0; background: #fafaf7; }
+    .capture-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    .preview-card { background:#fafaf7; border:1px solid #e0ddd5; border-radius:18px; padding:12px; min-height:260px; }
+    .preview-card h4 { font-size:0.85rem; color:#555; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em; }
+    .image-preview { width: 100%; max-height: 360px; border-radius: 14px; object-fit: contain; background: #ecebe6; display:block; }
+    .hint-box { background:#fff8e1; border:1px solid #f3d36c; border-radius:16px; padding:12px 14px; color:#5c4a00; font-size:0.9rem; line-height:1.4; margin:12px 0; }
+    .ocr-progress { background: #eae8e1; border-radius: 40px; height: 9px; width: 100%; margin: 12px 0 6px; overflow: hidden; }
+    .ocr-progress-bar { height: 100%; width: 0%; background: #d32f2f; transition: width 0.2s; }
+    .progress-text { font-size:0.8rem; color:#666; min-height:18px; }
+    .raw-ocr-box { background: #f3f2ed; padding: 12px 16px; border-radius: 16px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; max-height: 180px; overflow-y: auto; border: 1px solid #ddd9cf; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; margin: 16px 0; }
+    .field-grid label { font-weight: 600; font-size: 0.8rem; color: #3a3a3a; display: flex; flex-direction: column; gap: 4px; }
+    .field-grid input, .field-grid select { padding: 10px 12px; border-radius: 30px; border: 1px solid #ccc7bc; font-size: 0.9rem; background: white; }
+    .confidence-badge { display: inline-block; padding: 7px 18px; border-radius: 40px; font-weight: 800; background: #d4edda; color: #155724; }
+    .confidence-badge.amber { background: #fff3cd; color: #856404; }
+    .confidence-badge.red { background: #f8d7da; color: #721c24; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
+    .board-item { background: white; padding: 12px 14px; border-radius: 16px; border-left: 6px solid #d32f2f; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin: 8px 0; display: grid; grid-template-columns: 1.05fr 1.3fr 1.05fr .85fr 1.3fr; gap:10px; align-items:center; }
+    .action-row { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    .btn-mini { border:1px solid #d9d3c8; background:#fff; color:#161616; border-radius:999px; padding:7px 10px; font-size:.76rem; font-weight:800; cursor:pointer; }
+    .btn-mini.primary { background:#d32f2f; color:#fff; border-color:#d32f2f; }
+    .btn-mini.amber { background:#fff3cd; color:#6b5100; border-color:#ecd37a; }
+    .btn-mini.green { background:#d4edda; color:#155724; border-color:#afdbba; }
+    .location-summary { display:grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap:10px; margin: 10px 0 14px; }
+    .location-card { background:#fff; border:1px solid #e4dfd4; border-radius:16px; padding:11px 13px; min-height:70px; }
+    .location-card b { display:block; font-size:.82rem; line-height:1.15; color:#222; }
+    .location-card .count { font-size:1.55rem; font-weight:900; color:#d32f2f; margin-top:4px; }
+    .move-grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:14px; }
+    .move-grid label { font-weight:700; font-size:.82rem; display:flex; flex-direction:column; gap:6px; }
+    .move-grid select, .move-grid input { padding:11px 12px; border-radius:18px; border:1px solid #ccc7bc; font-size:.95rem; }
+    .detail-box { background:#f8f7f3; border:1px solid #e2dfd6; border-radius:16px; padding:13px 15px; margin-top:10px; }
+    .timeline-list { margin-top:10px; display:grid; gap:8px; }
+    .timeline-item { background:#fff; border:1px solid #e8e3d8; border-radius:14px; padding:10px 12px; display:grid; grid-template-columns: 120px 1fr 160px; gap:10px; font-size:.86rem; }
+    .small { color:#666; font-size:0.82rem; }
+    .pill { background:#eee; padding:3px 12px; border-radius:40px; font-size:0.78rem; font-weight:700; display:inline-flex; justify-content:center; }
+    .pill.green { background:#d4edda; color:#155724; }
+    .pill.amber { background:#fff3cd; color:#856404; }
+    .toast { background: #1e1e1e; color: white; padding: 14px 24px; border-radius: 60px; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 2000; visibility: hidden; opacity: 0; transition: 0.2s; }
+    .toast.show { visibility: visible; opacity: 1; }
+    @media (max-width: 1100px) { .location-summary { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
+    @media (max-width: 820px) { .main-grid { grid-template-columns: 1fr; } .sidebar { display: none; } .field-grid, .capture-grid, .move-grid { grid-template-columns: 1fr; } .modal { padding: 20px; border-radius: 20px; } .board-item { grid-template-columns: 1fr; } .action-row { justify-content:flex-start; } .timeline-item { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="nav-header">
+    <div class="logo">ELX <span>OSR</span> Control Tower</div>
+    <div class="nav-links">
+      <a href="#" class="active">Dashboard</a>
+      <a href="#">Reports</a>
+      <a href="#">Settings</a>
+    </div>
+  </div>
+  <div class="main-grid">
+    <div class="sidebar">
+      <ul>
+        <li class="active">Dashboard</li>
+        <li>Reports</li>
+        <li>Settings</li>
+      </ul>
+    </div>
+    <div class="content">
+      <div class="top-row">
+        <div>
+          <h1>OSR Control Tower</h1>
+          <div class="sub">Photo label capture -> OCR extraction -> human confirmation -> OSR record</div>
+        </div>
+        <div class="row" style="margin-top:0;">
+          <button class="btn btn-primary" id="scanLabelBtn">Scan Label</button>
+          <button class="btn btn-outline" id="exportBtn">Export</button>
+        </div>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi-card"><h4>New Receipts</h4><div class="value" id="kpiNew">3</div></div>
+        <div class="kpi-card"><h4>Needs Validation</h4><div class="value" id="kpiValidate">2</div></div>
+        <div class="kpi-card"><h4>Staged</h4><div class="value" id="kpiStaged">1</div></div>
+        <div class="kpi-card"><h4>Dispatch Ready</h4><div class="value" id="kpiDispatch">0</div></div>
+      </div>
+
+      <div class="workflow-steps">
+        <span class="step active">1. Receive Goods</span>
+        <span class="step">2. SAP Validation</span>
+        <span class="step">3. Warehouse Staging</span>
+        <span class="step">4. Dispatch Board</span>
+        <span class="step">5. Delivery Evidence</span>
+        <span class="step">6. Invoice Ready</span>
+      </div>
+
+      <div style="font-weight:800; color:#333; margin: 6px 0 8px;">Warehouse Locations / Cages</div>
+      <div class="location-summary" id="locationSummary"></div>
+
+      <div class="board" id="workflowBoard">
+        <div style="font-weight:700; color:#333; margin-bottom:12px;">OSR Workflow Board - move items through cages, staging and dispatch</div>
+        <div id="boardItems"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="scanModal">
+  <div class="modal">
+    <span class="modal-close" id="closeModalBtn">&times;</span>
+    <h2>Scan Physical Label</h2>
+    <div class="step-indicator">
+      <span class="step-badge active" id="step1Badge">1. Photo</span>
+      <span class="step-badge" id="step2Badge">2. OCR Extract</span>
+      <span class="step-badge" id="step3Badge">3. Confirm</span>
+    </div>
+
+    <div id="step1Container">
+      <div class="hint-box"><b>Best result:</b> fill the camera with only the paper label, keep it flat, use good light, and avoid desk/background. This version auto-crops the text area before OCR.</div>
+      <div class="upload-area">
+        <input type="file" id="imageInput" accept="image/*" capture="environment" style="display:none;" />
+        <button class="btn btn-outline" id="uploadBtn">Take / Upload Label Photo</button>
+        <p style="margin-top:10px; font-size:0.8rem; color:#6b6b6b;">Desktop: upload photo | Mobile/tablet: camera capture</p>
+      </div>
+      <div class="capture-grid" id="previewGrid" style="display:none;">
+        <div class="preview-card">
+          <h4>Original Photo</h4>
+          <img id="previewImg" class="image-preview" alt="Original label preview" />
+        </div>
+        <div class="preview-card">
+          <h4>Processed OCR Crop</h4>
+          <img id="processedImg" class="image-preview" alt="Processed crop preview" />
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary" id="extractBtn" disabled>Extract fields with OCR</button>
+        <button class="btn btn-soft" id="resetPhotoBtn" disabled>Clear Photo</button>
+      </div>
+      <div class="ocr-progress"><div class="ocr-progress-bar" id="progressBar"></div></div>
+      <div class="progress-text" id="progressText"></div>
+    </div>
+
+    <div id="step2Container" style="display:none;">
+      <div class="row"><span class="confidence-badge" id="confidenceBadge">-</span></div>
+      <details open>
+        <summary style="font-weight:700; margin: 8px 0;">Raw OCR text - review</summary>
+        <div class="raw-ocr-box" id="rawOcrText">-</div>
+      </details>
+      <div class="field-grid">
+        <label>PO Number <input id="fieldPO" placeholder="e.g. 4500871234" /></label>
+        <label>SAP Reference <input id="fieldSAP" placeholder="optional" /></label>
+        <label>Supplier / Sender <input id="fieldSupplier" placeholder="e.g. Blackwoods" /></label>
+        <label>Destination / Site <input id="fieldDest" placeholder="e.g. BHP Olympic Dam" /></label>
+        <label>Connote / Consignment <input id="fieldConnote" placeholder="e.g. CN-ELX-782291" /></label>
+        <label>Reference Number <input id="fieldRef" placeholder="e.g. 55420" /></label>
+        <label>Quantity <input id="fieldQty" placeholder="e.g. 4" /></label>
+        <label>Assign Cage / Zone
+          <select id="fieldCage">
+            <option>BHP Olympic Dam Cage</option>
+            <option>BHP Carrapateena Cage</option>
+            <option>BHP Prominent Hill Cage</option>
+            <option>Unknown / Review Cage</option>
+            <option>Ready Dispatch Zone</option>
+          </select>
+        </label>
+      </div>
+      <div class="hint-box"><b>Reliability rule:</b> OCR only pre-fills fields. Worker must confirm/edit before an official OSR record is created.</div>
+      <div class="row">
+        <button class="btn btn-primary" id="confirmCreateBtn">Confirm & Create OSR Record</button>
+        <button class="btn btn-outline" id="retryOcrBtn">Back to Photo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="moveModal">
+  <div class="modal" style="max-width:720px;">
+    <span class="modal-close" id="closeMoveModalBtn">&times;</span>
+    <h2>Move OSR Item</h2>
+    <div class="detail-box" id="moveItemSummary">-</div>
+    <div class="move-grid">
+      <label>Move to cage / box / location
+        <select id="moveLocationSelect">
+          <option>BHP Olympic Dam Cage</option>
+          <option>BHP Carrapateena Cage</option>
+          <option>BHP Prominent Hill Cage</option>
+          <option>Day 1 FIFO Staging</option>
+          <option>Day 2 FIFO Staging</option>
+          <option>Quarantine / Exceptions</option>
+          <option>Ready Dispatch Zone</option>
+          <option>Loaded / Outbound Bay</option>
+        </select>
+      </label>
+      <label>Workflow status
+        <select id="moveStatusSelect">
+          <option>New Receipts</option>
+          <option>Needs Validation</option>
+          <option>Staged</option>
+          <option>Dispatch Ready</option>
+          <option>Dispatched</option>
+          <option>Exception</option>
+        </select>
+      </label>
+      <label style="grid-column: 1 / -1;">Movement note
+        <input id="moveNoteInput" placeholder="e.g. physically moved to Olympic Dam cage" />
+      </label>
+    </div>
+    <div class="hint-box"><b>Demo logic:</b> this simulates scanning the ELX OSR ID and moving the physical parcel to a cage, staging area, exception area or dispatch bay.</div>
+    <div class="row">
+      <button class="btn btn-primary" id="saveMoveBtn">Save Movement</button>
+      <button class="btn btn-outline" id="cancelMoveBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toastMessage">OSR Record created</div>
+
+<script>
+(function() {
+  const state = {
+    rawText: '',
+    processedImageData: null,
+    originalImageData: null,
+    locations: [
+      'BHP Olympic Dam Cage',
+      'BHP Carrapateena Cage',
+      'BHP Prominent Hill Cage',
+      'Day 1 FIFO Staging',
+      'Day 2 FIFO Staging',
+      'Quarantine / Exceptions',
+      'Ready Dispatch Zone',
+      'Loaded / Outbound Bay'
+    ],
+    selectedMoveId: null,
+    osrRecords: loadSavedRecords(),
+    timeline: loadSavedTimeline()
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const modal = $('scanModal');
+  const closeModalBtn = $('closeModalBtn');
+  const scanBtn = $('scanLabelBtn');
+  const exportBtn = $('exportBtn');
+  const uploadBtn = $('uploadBtn');
+  const imageInput = $('imageInput');
+  const previewGrid = $('previewGrid');
+  const previewImg = $('previewImg');
+  const processedImg = $('processedImg');
+  const extractBtn = $('extractBtn');
+  const resetPhotoBtn = $('resetPhotoBtn');
+  const progressBar = $('progressBar');
+  const progressText = $('progressText');
+  const step1Container = $('step1Container');
+  const step2Container = $('step2Container');
+  const step1Badge = $('step1Badge');
+  const step2Badge = $('step2Badge');
+  const step3Badge = $('step3Badge');
+  const rawOcrText = $('rawOcrText');
+  const confidenceBadge = $('confidenceBadge');
+  const fieldPO = $('fieldPO');
+  const fieldSAP = $('fieldSAP');
+  const fieldSupplier = $('fieldSupplier');
+  const fieldDest = $('fieldDest');
+  const fieldConnote = $('fieldConnote');
+  const fieldRef = $('fieldRef');
+  const fieldQty = $('fieldQty');
+  const fieldCage = $('fieldCage');
+  const confirmBtn = $('confirmCreateBtn');
+  const retryBtn = $('retryOcrBtn');
+  const boardItems = $('boardItems');
+  const toast = $('toastMessage');
+  const locationSummary = $('locationSummary');
+  const moveModal = $('moveModal');
+  const closeMoveModalBtn = $('closeMoveModalBtn');
+  const cancelMoveBtn = $('cancelMoveBtn');
+  const saveMoveBtn = $('saveMoveBtn');
+  const moveItemSummary = $('moveItemSummary');
+  const moveLocationSelect = $('moveLocationSelect');
+  const moveStatusSelect = $('moveStatusSelect');
+  const moveNoteInput = $('moveNoteInput');
+
+
+  function defaultRecords() {
+    return [
+      { id: 'OSR-2026-000721', status: 'New Receipts', po: '4500871001', supplier: 'Blackwoods', dest: 'BHP Olympic Dam', cage: 'BHP Olympic Dam Cage', qty: '2' },
+      { id: 'OSR-2026-000722', status: 'New Receipts', po: '4500871002', supplier: 'Coates Hire', dest: 'BHP Carrapateena', cage: 'BHP Carrapateena Cage', qty: '1' },
+      { id: 'OSR-2026-000723', status: 'Needs Validation', po: '4500871003', supplier: 'ATOM Supply', dest: 'Prominent Hill', cage: 'BHP Prominent Hill Cage', qty: '3' },
+      { id: 'OSR-2026-000724', status: 'Needs Validation', po: '4500871004', supplier: 'Unknown', dest: 'Unknown', cage: 'Quarantine / Exceptions', qty: '0' },
+      { id: 'OSR-2026-000725', status: 'Staged', po: '4500871005', supplier: 'Blackwoods', dest: 'BHP Olympic Dam', cage: 'Day 1 FIFO Staging', qty: '4' }
+    ];
+  }
+
+  function loadSavedRecords() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('elx_osr_records_v8') || 'null');
+      return Array.isArray(saved) && saved.length ? saved : defaultRecords();
+    } catch { return defaultRecords(); }
+  }
+
+  function loadSavedTimeline() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('elx_osr_timeline_v8') || 'null');
+      return Array.isArray(saved) ? saved : [];
+    } catch { return []; }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem('elx_osr_records_v8', JSON.stringify(state.osrRecords));
+      localStorage.setItem('elx_osr_timeline_v8', JSON.stringify(state.timeline.slice(0, 100)));
+    } catch {}
+  }
+
+  function addTimeline(id, event, location, status, note) {
+    state.timeline.unshift({
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      id,
+      event,
+      location: location || '',
+      status: status || '',
+      note: note || ''
+    });
+    saveState();
+  }
+
+  function statusClass(status) {
+    if (status === 'Staged' || status === 'Dispatch Ready' || status === 'Dispatched') return 'green';
+    if (status === 'Needs Validation' || status === 'Exception') return 'amber';
+    return '';
+  }
+
+  function actionButtons(record) {
+    const id = escapeHtml(record.id);
+    return `
+      <div class="action-row">
+        <button class="btn-mini" data-action="move" data-id="${id}">Move</button>
+        <button class="btn-mini amber" data-action="validate" data-id="${id}">SAP OK</button>
+        <button class="btn-mini green" data-action="ready" data-id="${id}">Ready</button>
+        <button class="btn-mini" data-action="exception" data-id="${id}">Exception</button>
+      </div>`;
+  }
+
+  function renderLocationSummary() {
+    const rows = state.locations.map(loc => {
+      const count = state.osrRecords.filter(r => r.cage === loc).length;
+      return `<div class="location-card"><b>${escapeHtml(loc)}</b><div class="count">${count}</div></div>`;
+    }).join('');
+    locationSummary.innerHTML = rows;
+  }
+
+  function renderBoard() {
+    boardItems.innerHTML = state.osrRecords.map(r => `
+      <div class="board-item">
+        <div><b>${escapeHtml(r.id)}</b><div class="small">PO ${escapeHtml(r.po || 'N/A')} · Qty ${escapeHtml(r.qty || '0')}</div></div>
+        <div><b>${escapeHtml(r.supplier || 'N/A')}</b><div class="small">${escapeHtml(r.dest || 'N/A')}</div></div>
+        <div><span class="pill">${escapeHtml(r.cage || 'Unassigned')}</span></div>
+        <div><span class="pill ${statusClass(r.status)}">${escapeHtml(r.status)}</span></div>
+        ${actionButtons(r)}
+      </div>
+    `).join('');
+    renderLocationSummary();
+    updateKpi();
+    saveState();
+  }
+
+  function updateKpi() {
+    $('kpiNew').textContent = state.osrRecords.filter(r => r.status === 'New Receipts').length;
+    $('kpiValidate').textContent = state.osrRecords.filter(r => r.status === 'Needs Validation').length;
+    $('kpiStaged').textContent = state.osrRecords.filter(r => r.status === 'Staged').length;
+    $('kpiDispatch').textContent = state.osrRecords.filter(r => r.status === 'Dispatch Ready').length;
+  }
+
+  function showToast(msg, duration = 3000) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), duration);
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[s]));
+  }
+
+  function openModal() {
+    modal.classList.add('open');
+    showStepOne();
+    resetCapture(false);
+  }
+  function closeModal() { modal.classList.remove('open'); }
+
+  function showStepOne() {
+    step1Container.style.display = 'block';
+    step2Container.style.display = 'none';
+    step1Badge.classList.add('active');
+    step2Badge.classList.remove('active');
+    step3Badge.classList.remove('active');
+  }
+
+  function showStepTwo() {
+    step1Container.style.display = 'none';
+    step2Container.style.display = 'block';
+    step1Badge.classList.remove('active');
+    step2Badge.classList.add('active');
+    step3Badge.classList.add('active');
+  }
+
+  function resetCapture(clearInput = true) {
+    if (clearInput) imageInput.value = '';
+    state.originalImageData = null;
+    state.processedImageData = null;
+    state.rawText = '';
+    previewGrid.style.display = 'none';
+    previewImg.removeAttribute('src');
+    processedImg.removeAttribute('src');
+    extractBtn.disabled = true;
+    resetPhotoBtn.disabled = true;
+    progressBar.style.width = '0%';
+    progressText.textContent = '';
+    rawOcrText.textContent = '-';
+    confidenceBadge.textContent = '-';
+    confidenceBadge.className = 'confidence-badge';
+    [fieldPO, fieldSAP, fieldSupplier, fieldDest, fieldConnote, fieldRef, fieldQty].forEach(input => input.value = '');
+  }
+
+  function loadImageFromFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => resolve({ img, dataUrl: e.target.result });
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function canvasToDataUrl(canvas, quality = 0.92) {
+    return canvas.toDataURL('image/jpeg', quality);
+  }
+
+  function resizeToCanvas(img, maxLongSide = 2300) {
+    let w = img.naturalWidth || img.width;
+    let h = img.naturalHeight || img.height;
+    const longest = Math.max(w, h);
+    if (longest > maxLongSide) {
+      const ratio = maxLongSide / longest;
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas;
+  }
+
+  function autoCropToDarkText(canvas) {
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    const xs = [], ys = [];
+
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
+        const i = (y * w + x) * 4;
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+        const nearEdge = x < 12 || y < 12 || x > w - 12 || y > h - 12;
+        if (!nearEdge && gray < 145) {
+          xs.push(x);
+          ys.push(y);
+        }
+      }
+    }
+
+    if (xs.length < 80) return canvas;
+
+    xs.sort((a, b) => a - b);
+    ys.sort((a, b) => a - b);
+    const percentile = (arr, p) => arr[Math.min(arr.length - 1, Math.max(0, Math.floor(arr.length * p)))];
+
+    let x1 = percentile(xs, 0.01);
+    let x2 = percentile(xs, 0.99);
+    let y1 = percentile(ys, 0.01);
+    let y2 = percentile(ys, 0.99);
+
+    const bw = x2 - x1;
+    const bh = y2 - y1;
+    const marginX = Math.max(70, Math.round(bw * 0.16));
+    const marginY = Math.max(80, Math.round(bh * 0.12));
+
+    x1 = Math.max(0, x1 - marginX);
+    y1 = Math.max(0, y1 - marginY);
+    x2 = Math.min(w, x2 + marginX);
+    y2 = Math.min(h, y2 + marginY);
+
+    const cropW = x2 - x1;
+    const cropH = y2 - y1;
+    const areaRatio = (cropW * cropH) / (w * h);
+
+    // If crop is unreasonable, fall back to original.
+    if (cropW < w * 0.25 || cropH < h * 0.20 || areaRatio > 0.95) return canvas;
+
+    const out = document.createElement('canvas');
+    out.width = Math.round(cropW);
+    out.height = Math.round(cropH);
+    const outCtx = out.getContext('2d', { willReadFrequently: true });
+    outCtx.fillStyle = 'white';
+    outCtx.fillRect(0, 0, out.width, out.height);
+    outCtx.drawImage(canvas, x1, y1, cropW, cropH, 0, 0, out.width, out.height);
+    return out;
+  }
+
+  function enhanceForOcr(canvas) {
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    const grays = [];
+
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      grays.push(gray);
+    }
+    grays.sort((a, b) => a - b);
+    const p02 = grays[Math.floor(grays.length * 0.02)] || 0;
+    const p98 = grays[Math.floor(grays.length * 0.98)] || 255;
+    const range = Math.max(30, p98 - p02);
+
+    for (let i = 0; i < data.length; i += 4) {
+      let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      gray = ((gray - p02) / range) * 255;
+      gray = (gray - 128) * 1.35 + 128; // contrast
+      gray = Math.max(0, Math.min(255, gray));
+      data[i] = data[i + 1] = data[i + 2] = gray;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+  }
+
+  async function preprocessImage(file) {
+    const { img, dataUrl } = await loadImageFromFile(file);
+    const base = resizeToCanvas(img, 2300);
+    const cropped = autoCropToDarkText(base);
+    const enhanced = enhanceForOcr(cropped);
+    return { original: dataUrl, processed: canvasToDataUrl(enhanced, 0.94) };
+  }
+
+  function normalizeText(text) {
+    return String(text || '')
+      .replace(/[|]+/g, ' ')
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .replace(/[：]/g, ':')
+      .replace(/[\t]+/g, ' ')
+      .replace(/\r/g, '\n')
+      .split('\n')
+      .map(line => line.replace(/\s{2,}/g, ' ').trim())
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  function cleanValue(value) {
+    return String(value || '')
+      .replace(/^[\s:;#\-\/]+/, '')
+      .replace(/[\s:;#\-\/]+$/, '')
+      .replace(/[^A-Za-z0-9\-\/ .,]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+  function keywordRegex(keyword) {
+    return keyword
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\s+/g, '\\s*')
+      .replace(/\\\//g, '\\/');
+  }
+
+  function lineValueAfterKeyword(lines, keywords) {
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      const rawUpper = raw.toUpperCase();
+      for (const kw of keywords) {
+        const re = new RegExp('\\b' + keywordRegex(kw) + '\\b\\s*[:;#\\-]?\\s*(.*)$', 'i');
+        const match = raw.match(re);
+        if (match) {
+          let value = cleanValue(match[1]);
+          // If the label and value are split over two lines, read the next useful line.
+          if (!value || value.length < 2) {
+            for (let j = i + 1; j < Math.min(lines.length, i + 5); j++) {
+              const next = cleanValue(lines[j]);
+              const nextUpper = next.toUpperCase();
+              if (!next) continue;
+              if (/^(PO|P\/O|P0|CONNOTE|CON NOTE|CONSignment|REFERENCE|REF|SHIP TO|DELIVER TO|DESTINATION|QTY|QTY\.|QUANTITY|DELIVERY DATE|SAP|SUPPLIER|SENDER|VENDOR)\b/i.test(nextUpper)) break;
+              value = next;
+              break;
+            }
+          }
+          if (value) return value;
+        }
+      }
+      // Fuzzy support for common OCR mistake: QTY can become OTY/0TY.
+      if (keywords.includes('QTY') && /\b[QO0]T[YV]\b/i.test(rawUpper)) {
+        const qty = raw.match(/\d{1,5}/);
+        if (qty) return qty[0];
+      }
+    }
+    return '';
+  }
+
+  function sanitizeDigits(value, min = 1, max = 20) {
+    const fixed = String(value || '').replace(/[Oo]/g, '0');
+    const matches = fixed.match(/\d+/g) || [];
+    if (!matches.length) return '';
+    const best = matches.sort((a, b) => b.length - a.length)[0];
+    return best.length >= min && best.length <= max ? best : '';
+  }
+
+  function sanitizeReference(value) {
+    const cleaned = cleanValue(value);
+    if (!cleaned) return '';
+    // If the reference is numeric, prefer the longest digit run. This removes OCR tails like "55420 E".
+    const numeric = sanitizeDigits(cleaned, 3, 20);
+    if (numeric) return numeric;
+    // If alphanumeric, remove a single isolated OCR tail at the end.
+    return cleaned.replace(/\s+[A-Z]$/i, '').trim();
+  }
+
+  function sanitizeConnote(value) {
+    let cleaned = cleanValue(value).toUpperCase();
+    if (!cleaned) return '';
+    // Common OCR issue: "CN-ELX-78 2291" should become "CN-ELX-782291", not "CN-ELX-78-2291".
+    cleaned = cleaned
+      .replace(/\s*-\s*/g, '-')
+      .replace(/(?<=\d)\s+(?=\d)/g, '')
+      .replace(/\s+/g, '');
+    return cleaned;
+  }
+
+  function collectDestination(lines) {
+    const stop = /^(QTY|[QO0]TY|QUANTITY|ITEMS|CARTONS|BOXES|PIECES|PCS|DELIVERY DATE|DATE|CONNOTE|CON NOTE|REFERENCE|REF|PO|P\/O|P0|SAP|SUPPLIER|SENDER|VENDOR)\b/i;
+    for (let i = 0; i < lines.length; i++) {
+      const upper = lines[i].toUpperCase();
+      if (/\b(SHIP\s*TO|DELIVER\s*TO|DESTINATION|LOCATION|SITE)\b/.test(upper)) {
+        let first = cleanValue(lines[i].replace(/SHIP\s*TO|DELIVER\s*TO|DESTINATION|LOCATION|SITE/ig, ''));
+        const parts = [];
+        if (first && first.length > 2) parts.push(first);
+        for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
+          const val = cleanValue(lines[j]);
+          if (!val) continue;
+          if (stop.test(val)) break;
+          // Avoid obvious OCR garbage lines, but keep normal address/site lines.
+          const letters = (val.match(/[A-Za-z]/g) || []).length;
+          if (val.length >= 3 && letters >= 2) parts.push(val);
+        }
+        if (parts.length) return parts.join(', ');
+      }
+    }
+    return '';
+  }
+
+  function inferKnownSite(text) {
+    const upper = text.toUpperCase();
+    if (/OLYMP/i.test(upper) || /ROXBY/i.test(upper)) return 'BHP Olympic Dam / Roxby Downs';
+    if (/CARRA/i.test(upper)) return 'BHP Carrapateena';
+    if (/PROMINENT/i.test(upper)) return 'BHP Prominent Hill';
+    if (/PORT\s*HEDLAND/i.test(upper)) return 'Port Hedland';
+    if (/NEWMAN/i.test(upper)) return 'Newman';
+    if (/MORANBAH/i.test(upper)) return 'Moranbah';
+    if (/BLACKWATER/i.test(upper)) return 'Blackwater';
+    if (/ADELAIDE/i.test(upper)) return 'Adelaide';
+    if (/PERTH/i.test(upper)) return 'Perth';
+    return '';
+  }
+
+  function normalizeSupplier(value, fullText) {
+    const combined = (value + '\n' + fullText).toUpperCase();
+    if (/BLACKWOO/.test(combined)) return 'BLACKWOODS';
+    if (/COATES/.test(combined)) return 'Coates Hire';
+    if (/ATOM/.test(combined)) return 'ATOM Supply';
+    if (/TOLL/.test(combined)) return 'Toll';
+    if (/BUNZL/.test(combined)) return 'Bunzl';
+    return cleanValue(value);
+  }
+
+  function extractQuantity(lines, full) {
+    // Labelled quantity first: QTY, OTY/0TY OCR mistakes, Quantity, Items, Cartons, Pieces, PCS.
+    for (const line of lines) {
+      const upper = line.toUpperCase();
+      if (/\b(Q\s*T\s*Y|[O0]\s*T\s*Y|QUANTITY|ITEMS|CARTONS|PIECES|PCS)\b/.test(upper)) {
+        const num = line.match(/\b\d{1,5}\b/);
+        if (num) return num[0];
+      }
+      // Example: "4 BOXES", "4 B0XES", "4 BOKES".
+      const boxLine = upper.match(/\b(\d{1,5})\b\s*(?:B[O0]X(?:E?S)?|BOKES|BOXES|CARTONS?|ITEMS?|PIECES?|PCS)\b/i);
+      if (boxLine) return boxLine[1];
+    }
+    const upperFull = full.toUpperCase();
+    let m = upperFull.match(/\b(?:Q\s*T\s*Y|[O0]\s*T\s*Y|QUANTITY|ITEMS|CARTONS|PIECES|PCS)\b\s*[:;#\-]?\s*(\d{1,5})\b/i);
+    if (m) return m[1];
+    m = upperFull.match(/\b(\d{1,5})\b\s*(?:B[O0]X(?:E?S)?|BOKES|BOXES|CARTONS?|ITEMS?|PIECES?|PCS)\b/i);
+    if (m) return m[1];
+    return '';
+  }
+
+  function extractFields(text) {
+    const normal = normalizeText(text);
+    const lines = normal.split('\n').map(cleanValue).filter(Boolean);
+    const full = lines.join('\n');
+    const upper = full.toUpperCase();
+
+    const result = { po: '', sap: '', supplier: '', dest: '', connote: '', ref: '', qty: '' };
+
+    // PO number - prefer labelled match, then BHP-style 45xxxxxxxx fallback.
+    let poMatch = upper.match(/\b(?:P\s*\/?\s*O|PO|P0|PURCHASE\s*ORDER|ORDER\s*NO|PO\s*NUMBER)\b\s*[:;#\-]?\s*([A-Z0-9\-\/ ]{4,24})/i);
+    if (poMatch) result.po = sanitizeDigits(poMatch[1], 6, 14);
+    if (!result.po) {
+      const bhpPo = upper.match(/\b45\d{6,12}\b/);
+      if (bhpPo) result.po = bhpPo[0];
+    }
+
+    // SAP/reference-like fields.
+    let sapValue = lineValueAfterKeyword(lines, ['SAP REFERENCE', 'SAP REF', 'SAP', 'RESERVATION', 'REQUISITION', 'REQ']);
+    result.sap = cleanValue(sapValue);
+
+    // Supplier / sender.
+    const supplierValue = lineValueAfterKeyword(lines, ['SUPPLIER', 'SENDER', 'VENDOR', 'FROM', 'SHIPPER', 'CONSIGNOR']);
+    result.supplier = normalizeSupplier(supplierValue, full);
+
+    // Connote / consignment. Keep separate from generic reference.
+    let conValue = lineValueAfterKeyword(lines, ['CONNOTE', 'CON NOTE', 'CONSIGNMENT', 'CONSIGNMENT NO', 'TRACKING', 'SHIPMENT']);
+    if (!conValue) {
+      const conMatch = full.match(/\b[A-Z]{1,5}[\-\s]?[A-Z]{2,5}[\-\s]?\d{2,}\s?\d{2,}\b/i);
+      if (conMatch) conValue = conMatch[0];
+    }
+    result.connote = sanitizeConnote(conValue);
+
+    // Reference number. Clean OCR tails like "55420 E".
+    let refValue = lineValueAfterKeyword(lines, ['REFERENCE', 'REF', 'DOCKET']);
+    if (refValue && result.connote && sanitizeConnote(refValue) === result.connote) refValue = '';
+    if (!refValue) {
+      const refMatch = upper.match(/\b(?:REFERENCE|REF)\b\s*[:;#\-]?\s*([A-Z0-9\-\/ ]{3,24})/i);
+      if (refMatch) refValue = refMatch[1];
+    }
+    result.ref = sanitizeReference(refValue);
+
+    // Destination multi-line.
+    result.dest = collectDestination(lines);
+    const knownSite = inferKnownSite(full);
+    if (!result.dest && knownSite) result.dest = knownSite;
+    if (knownSite && result.dest.length < knownSite.length) result.dest = knownSite;
+
+    // Quantity with fuzzy OCR support.
+    result.qty = extractQuantity(lines, full);
+
+    return result;
+  }
+
+  function scoreConfidence(extracted) {
+    let found = 0;
+    if (extracted.po) found += 2;
+    if (extracted.supplier) found += 1;
+    if (extracted.dest) found += 1;
+    if (extracted.connote) found += 1;
+    if (extracted.ref) found += 0.5;
+    if (extracted.qty) found += 0.5;
+    if (found >= 4) return 'high';
+    if (found >= 2) return 'medium';
+    return 'low';
+  }
+
+  function setProgress(message, pct) {
+    progressText.textContent = message || '';
+    if (typeof pct === 'number') progressBar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  }
+
+  async function runOcr(imageDataUrl) {
+    setProgress('Starting OCR engine...', 8);
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: (m) => {
+        if (m.status) {
+          const pct = Math.round((m.progress || 0) * 100);
+          setProgress(`${m.status} ${pct ? pct + '%' : ''}`, Math.max(10, pct));
+        }
+      }
+    });
+
+    // PSM 6 is good for a clean cropped label block.
+    await worker.setParameters({
+      tessedit_pageseg_mode: '6',
+      preserve_interword_spaces: '1',
+      user_defined_dpi: '300'
+    });
+    const first = await worker.recognize(imageDataUrl);
+    let text = first.data.text || '';
+    let fields = extractFields(text);
+
+    // If weak, retry with sparse text mode and combine both outputs.
+    if (scoreConfidence(fields) === 'low') {
+      setProgress('Retrying OCR with sparse text mode...', 70);
+      await worker.setParameters({
+        tessedit_pageseg_mode: '11',
+        preserve_interword_spaces: '1',
+        user_defined_dpi: '300'
+      });
+      const second = await worker.recognize(imageDataUrl);
+      text = text + '\n' + (second.data.text || '');
+    }
+
+    await worker.terminate();
+    setProgress('OCR complete', 100);
+    return text;
+  }
+
+  scanBtn.addEventListener('click', openModal);
+  closeModalBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  uploadBtn.addEventListener('click', () => imageInput.click());
+  resetPhotoBtn.addEventListener('click', () => resetCapture(true));
+
+  imageInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      setProgress('Pre-processing image and auto-cropping label...', 5);
+      const processed = await preprocessImage(file);
+      state.originalImageData = processed.original;
+      state.processedImageData = processed.processed;
+      previewImg.src = processed.original;
+      processedImg.src = processed.processed;
+      previewGrid.style.display = 'grid';
+      extractBtn.disabled = false;
+      resetPhotoBtn.disabled = false;
+      setProgress('Ready to extract. Check the processed crop on the right.', 0);
+    } catch (err) {
+      console.error(err);
+      showToast('Could not load image. Try another photo.');
+      resetCapture(true);
+    }
+  });
+
+  extractBtn.addEventListener('click', async () => {
+    if (!state.processedImageData) return;
+    extractBtn.disabled = true;
+    try {
+      const text = await runOcr(state.processedImageData);
+      state.rawText = normalizeText(text);
+      rawOcrText.textContent = state.rawText || '(No text detected)';
+      const extracted = extractFields(state.rawText);
+
+      fieldPO.value = extracted.po || '';
+      fieldSAP.value = extracted.sap || '';
+      fieldSupplier.value = extracted.supplier || '';
+      fieldDest.value = extracted.dest || '';
+      fieldConnote.value = extracted.connote || '';
+      fieldRef.value = extracted.ref || '';
+      fieldQty.value = extracted.qty || '';
+
+      const conf = scoreConfidence(extracted);
+      if (conf === 'high') {
+        confidenceBadge.textContent = 'Strong extraction - review then confirm';
+        confidenceBadge.className = 'confidence-badge';
+      } else if (conf === 'medium') {
+        confidenceBadge.textContent = 'Partial extraction - worker review needed';
+        confidenceBadge.className = 'confidence-badge amber';
+      } else {
+        confidenceBadge.textContent = 'Poor extraction - edit manually';
+        confidenceBadge.className = 'confidence-badge red';
+      }
+
+      showStepTwo();
+    } catch (err) {
+      console.error(err);
+      showToast('OCR failed. Try a clearer/cropped photo.');
+    } finally {
+      extractBtn.disabled = false;
+    }
+  });
+
+  retryBtn.addEventListener('click', showStepOne);
+
+  confirmBtn.addEventListener('click', () => {
+    const po = fieldPO.value.trim() || 'N/A';
+    const supplier = fieldSupplier.value.trim() || 'N/A';
+    const dest = fieldDest.value.trim() || 'N/A';
+    const connote = fieldConnote.value.trim() || 'N/A';
+    const ref = fieldRef.value.trim() || 'N/A';
+    const qty = fieldQty.value.trim() || '0';
+    const cage = fieldCage.value;
+    const year = new Date().getFullYear();
+    const seq = String(state.osrRecords.length + 1).padStart(6, '0');
+    const id = `OSR-${year}-${seq}`;
+    state.osrRecords.unshift({ id, status: 'Needs Validation', po, supplier, dest, connote, ref, qty, cage });
+    addTimeline(id, 'OSR record created from label photo', cage, 'Needs Validation', `PO ${po} · ${supplier}`);
+    renderBoard();
+    showToast(`${id} created and moved to Needs Validation`);
+    closeModal();
+  });
+
+
+  function findRecord(id) {
+    return state.osrRecords.find(r => r.id === id);
+  }
+
+  function openMoveModal(id) {
+    const r = findRecord(id);
+    if (!r) return;
+    state.selectedMoveId = id;
+    moveItemSummary.innerHTML = `<b>${escapeHtml(r.id)}</b><br>PO ${escapeHtml(r.po || 'N/A')} · ${escapeHtml(r.supplier || 'N/A')}<br><span class="small">Current: ${escapeHtml(r.cage || 'Unassigned')} · ${escapeHtml(r.status || 'New Receipts')}</span>`;
+    moveLocationSelect.value = r.cage || 'BHP Olympic Dam Cage';
+    moveStatusSelect.value = r.status || 'New Receipts';
+    moveNoteInput.value = '';
+    moveModal.classList.add('open');
+  }
+
+  function closeMoveModal() {
+    moveModal.classList.remove('open');
+    state.selectedMoveId = null;
+  }
+
+  function moveRecord(id, newCage, newStatus, note) {
+    const r = findRecord(id);
+    if (!r) return;
+    const oldCage = r.cage || 'Unassigned';
+    const oldStatus = r.status || 'New Receipts';
+    r.cage = newCage || r.cage;
+    r.status = newStatus || r.status;
+    addTimeline(id, `Moved from ${oldCage} / ${oldStatus}`, r.cage, r.status, note || 'Movement updated by user');
+    renderBoard();
+    showToast(`${id} moved to ${r.cage}`);
+  }
+
+  boardItems.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-id');
+    const action = btn.getAttribute('data-action');
+    const r = findRecord(id);
+    if (!r) return;
+
+    if (action === 'move') openMoveModal(id);
+    if (action === 'validate') moveRecord(id, r.cage || 'BHP Olympic Dam Cage', 'Staged', 'SAP match confirmed by worker');
+    if (action === 'ready') moveRecord(id, 'Ready Dispatch Zone', 'Dispatch Ready', 'Moved to ready dispatch zone');
+    if (action === 'exception') moveRecord(id, 'Quarantine / Exceptions', 'Exception', 'Moved to exception review');
+  });
+
+  closeMoveModalBtn.addEventListener('click', closeMoveModal);
+  cancelMoveBtn.addEventListener('click', closeMoveModal);
+  moveModal.addEventListener('click', (e) => { if (e.target === moveModal) closeMoveModal(); });
+  saveMoveBtn.addEventListener('click', () => {
+    if (!state.selectedMoveId) return;
+    moveRecord(state.selectedMoveId, moveLocationSelect.value, moveStatusSelect.value, moveNoteInput.value.trim());
+    closeMoveModal();
+  });
+
+  exportBtn.addEventListener('click', () => {
+    const rows = [['OSR ID','Status','PO','Supplier','Destination','Connote','Reference','Qty','Cage']];
+    state.osrRecords.forEach(r => rows.push([r.id, r.status, r.po || '', r.supplier || '', r.dest || '', r.connote || '', r.ref || '', r.qty || '', r.cage || '']));
+    const csv = rows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'elx-osr-records.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  renderBoard();
+})();
+</script>
+</body>
+</html>
